@@ -32,18 +32,19 @@ def parse_settings(input_file):
 
 def compare_files(file_path, view, overwrite):
     file_contents = open(file_path).read()
-    if view == file_contents:
-        print('Success')
+    temp_stage = tempfile.NamedTemporaryFile(delete = True)
+    temp_stage.write(bytes(view, 'utf-8'))
+    temp_stage.flush()
+    git_diff = subprocess.run(["git", "diff", "-w", file_path, temp_stage.name], stdout=subprocess.PIPE)
+    if not git_diff.returncode:
+        return
     else:
-        temp_stage = tempfile.NamedTemporaryFile(delete = True)
-        temp_stage.write(bytes(view, 'utf-8'))
-        temp_stage.flush()
-
         logger.error("Diff detected for {}:".format(file_path))
         if overwrite:
             with open(file_path, 'w') as ofh:
                 ofh.write(view)
         else:
+            # Run the command again to print the pretty output from git diff
             subprocess.run(["git", "diff", "-w", file_path, temp_stage.name])
 
 def create_file(file_path, view):
