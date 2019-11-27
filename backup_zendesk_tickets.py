@@ -6,8 +6,8 @@ import yaml
 import logging
 import json
 
-from zendesk import Zendesk
 import click
+
 
 @click.command()
 @click.option('--config-file', help='Path to the config file', required=True, type=click.Path(exists=True))
@@ -17,20 +17,20 @@ def backup(config_file, days):
         config = yaml.load(f)
     url = config.get('url')
     if url is None:
-        logging.error("No 'url' in config_file: {}".format(config_file))
+        logger.error("No 'url' in config_file: {}".format(config_file))
         return
     username = config.get('username')
     if username is None:
-        logging.error("No 'username' in config_file: {}".format(config_file))
+        logger.error("No 'username' in config_file: {}".format(config_file))
         return
     token = config.get('token')
     if token is None:
-        logging.error("No 'token' in config_file: {}".format(config_file))
+        logger.error("No 'token' in config_file: {}".format(config_file))
         return
 
     output_path = config.get('output_path')
     if output_path is None:
-        logging.error("No 'output_path' in config_file: {}".format(config_file))
+        logger.error("No 'output_path' in config_file: {}".format(config_file))
         return
 
     now = datetime.datetime.now()
@@ -41,9 +41,9 @@ def backup(config_file, days):
     logging.info('Retrieving data from {}'.format(url))
     try:
         r = requests.get(url, auth=auth)
-    except Exception, e:
-        logging.error("Cannot retrieve requested data from url: {}".format(url))
-        logging.error(e.message)
+    except Exception as e:
+        logger.error("Cannot retrieve requested data from url: {}".format(url))
+        logger.error(e.message)
         return
 
     tickets = r.json().get('tickets')
@@ -54,22 +54,35 @@ def backup(config_file, days):
     if not os.path.exists(output_path):
         try:
             os.makedirs(output_path)
-        except Exception, e:
-            logging.error('Cannot create path: {}'.format(output_path))
-            logging.error(e.message)
+        except Exception as e:
+            logger.error('Cannot create path: {}'.format(output_path))
+            logger.error(e.message)
             return
     try:
         file = open(output_file, 'w+')
-    except Exception, e:
-        logging.error('Cannot open/create file: {}'.format(output_file))
-        logging.error(e.message)
+    except Exception as e:
+        logger.error('Cannot open/create file: {}'.format(output_file))
+        logger.error(e.message)
         return
     try:
         file.write(json.dumps(tickets))
-    except Exception, e:
-        logging.error('Cannot write to file: {}'.format(output_file))
-        logging.error(e.message)
+    except Exception as e:
+        logger.error('Cannot write to file: {}'.format(output_file))
+        logger.error(e.message)
 
 
 if __name__ == '__main__':
+    logfile = "zendeskbackup.log"
+    logging.basicConfig(
+        filename=logfile, level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+
+    logger = logging.getLogger(__name__)
+
+    # Handler that will log warnings or worse to stderr
+    stderr_handler = logging.StreamHandler()
+    stderr_handler.setLevel(logging.WARNING)
+    logger.addHandler(stderr_handler)
+
     backup()
