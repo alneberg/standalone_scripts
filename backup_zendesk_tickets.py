@@ -14,7 +14,7 @@ import click
 @click.option('--days', help='Since how many days ago to backup tickets', default=30, type=int)
 def backup(config_file, days):
     with open(config_file, 'r') as f:
-        config = yaml.load(f)
+        config = yaml.load(f, Loader=yaml.SafeLoader)
     url = config.get('url')
     if url is None:
         logger.error("No 'url' in config_file: {}".format(config_file))
