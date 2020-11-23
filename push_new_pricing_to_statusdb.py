@@ -187,7 +187,7 @@ def load_products(wb):
             val = ws["{}{}".format(col, row)].value
             if val is None:
                 val = ''
-            if header_val in ['Components', 'Alternative Components']:
+            if header_val in ['Components', 'Alternative Components', 'Reagent fee']:
                 # Some cells might be interpreted as floats
                 # e.g. "37,78"
                 val = str(val)
@@ -200,7 +200,7 @@ def load_products(wb):
                         except ValueError:
                             print("Product on row {} has component with "
                                   "invalid id {}: not an integer, "
-                                  " aborting!".format(row, comp_id))
+                                  "aborting!".format(row, comp_id))
                             raise
                         # Make a list with all individual components
                         val_list.append(comp_id)
@@ -238,8 +238,18 @@ def load_products(wb):
                 else:
                     if not is_empty_row(new_product):
                         new_product['is_fixed_price'] = False
-
-            new_product[header_val] = val
+            elif header_val == 'Reagent fee':
+                if new_product['Components'] != '':
+                    new_product['Components'].update(val)
+                elif val != '':
+                    print(new_product)
+            elif (header_val == 'Minimum Quantity') and (val != ''):
+                for component in new_product['Components'].keys():
+                    q = new_product['Components'][component]['quantity']
+                    if component not in ['52','53', '54']: # Hack that will break
+                        new_product['Components'][component]['quantity'] = q * val
+            else:
+                new_product[header_val] = val
 
         if not is_empty_row(new_product):
             # The id seems to be stored as a string in the database
