@@ -110,6 +110,7 @@ def check_not_null(items, type):
                 if 'Status' in item and item['Status'] == 'Discontinued':
                     pass
                 else:
+                    print(item)
                     raise ValueError("{} cannot be empty for {}."
                                     " Violated for item with id {}.".\
                                     format(not_null_key, type, id))
@@ -213,25 +214,30 @@ def load_products(wb):
 
             # Comment column occurs after the price columns, so
             # checking for this ensures that the prices have been parsed
-            if (header_val == 'Comment') and fetch_prices:
-                # Fixed price is added when price does not
-                # directly depend on the components
-                new_product['fixed_price'] = {}
-                int_cell = "{}{}".format(
-                                product_price_columns['Internal'],
-                                row
-                            )
-                acad_cell = "{}{}".format(
-                                product_price_columns['Academic'],
-                                row
-                            )
-                ext_cell = "{}{}".format(
-                                product_price_columns['Full cost'],
-                                row
-                            )
-                new_product['fixed_price']['price_in_sek'] = ws[int_cell].value
-                new_product['fixed_price']['price_for_academics_in_sek'] = ws[acad_cell].value
-                new_product['fixed_price']['full_cost_in_sek'] = ws[ext_cell].value
+            if (header_val == 'Comment'):
+                if fetch_prices:
+                    # Fixed price is added when price does not
+                    # directly depend on the components
+                    new_product['is_fixed_price'] = True
+                    new_product['fixed_price'] = {}
+                    int_cell = "{}{}".format(
+                                    product_price_columns['Internal'],
+                                    row
+                                )
+                    acad_cell = "{}{}".format(
+                                    product_price_columns['Academic'],
+                                    row
+                                )
+                    ext_cell = "{}{}".format(
+                                    product_price_columns['Full cost'],
+                                    row
+                                )
+                    new_product['fixed_price']['price_in_sek'] = ws[int_cell].value
+                    new_product['fixed_price']['price_for_academics_in_sek'] = ws[acad_cell].value
+                    new_product['fixed_price']['full_cost_in_sek'] = ws[ext_cell].value
+                else:
+                    if not is_empty_row(new_product):
+                        new_product['is_fixed_price'] = False
 
             new_product[header_val] = val
 
