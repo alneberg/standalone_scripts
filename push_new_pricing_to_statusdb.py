@@ -13,14 +13,14 @@ import datetime
 from collections import OrderedDict
 import pprint
 
-FIRST_ROW = {'components': 9,
+FIRST_ROW = {'components': 8,
              'products': 4}
 SHEET = {'components': 'Price list',
          'products': 'Products'}
 
 # Skip columns which are calculated from the other fields
 SKIP = {'components': ['Price', 'Total', 'Per unit'],
-        'products': ['Internal', 'External']}
+        'products': ['Internal', 'Academic', 'Full cost']}
 
 # The name of the _id_ key and which variables that shouldn't be changed
 # while keeping the same _id_. If an update of any of these fields is needed,
@@ -114,24 +114,33 @@ def check_not_null(items, type):
                                     " Violated for item with id {}.".\
                                     format(not_null_key, type, id))
 
+
 def check_discontinued(components, products):
     """Make sure no discontinued components are used for enabled products."""
 
     for product_id, product in products.items():
         component_ids = []
-        if product["Components"]:
-            component_ids += product["Components"].keys()
-        if product["Alternative Components"]:
-            component_ids += product["Alternative Components"].keys()
 
-        for component_id in component_ids:
-            if product["Status"] == "Enabled":
+        if product["Status"] == "Available":
+            if product["Components"]:
+                component_ids += product["Components"].keys()
+
+            for component_id in component_ids:
                 if components[component_id]["Status"] == "Discontinued":
                     logger.warning(("Product {}:\"{}\" uses the discontinued component "
                     "{}:\"{}\", changing product status to \"discontinued\"").\
                                     format(product_id, products[product_id]["Name"], \
                                            component_id, components[component_id]["Product name"]))
                     product["Status"] = "Discontinued"
+
+            if product["Alternative Components"]:
+                for component_id in product["Alternative Components"].keys():
+                    if components[component_id]["Status"] == "Discontinued":
+                        logger.warning(("Product {}:\"{}\" uses the discontinued alternative component "
+                        "{}:\"{}\", please check whether product status should be \"discontinued\"").\
+                                        format(product_id, products[product_id]["Name"], \
+                                               component_id, components[component_id]["Product name"]))
+
 
 def get_current_items(db, type):
     rows = db.view("entire_document/by_version", descending=True, limit=1).rows
@@ -212,12 +221,17 @@ def load_products(wb):
                                 product_price_columns['Internal'],
                                 row
                             )
+                acad_cell = "{}{}".format(
+                                product_price_columns['Academic'],
+                                row
+                            )
                 ext_cell = "{}{}".format(
-                                product_price_columns['External'],
+                                product_price_columns['Full cost'],
                                 row
                             )
                 new_product['fixed_price']['price_in_sek'] = ws[int_cell].value
-                new_product['fixed_price']['external_price_in_sek'] = ws[ext_cell].value
+                new_product['fixed_price']['price_for_academics_in_sek'] = ws[acad_cell].value
+                new_product['fixed_price']['full_cost_in_sek'] = ws[ext_cell].value
 
             new_product[header_val] = val
 
@@ -228,7 +242,7 @@ def load_products(wb):
 
             # Prepare for a status value on products
             if 'Status' not in new_product:
-                new_product['Status'] = "Enabled"
+                new_product['Status'] = "Available"
 
             products[product_id] = new_product
         row += 1
@@ -430,6 +444,7 @@ def main_push(input_file, config, user, user_email,
         # Prettyprint the json output
         pprint.pprint(comp_doc)
         pprint.pprint(prod_doc)
+
 
 def main_publish(config, user, user_email, dryrun=True):
     with open(config) as settings_file:
