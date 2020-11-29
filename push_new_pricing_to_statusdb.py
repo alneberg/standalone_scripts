@@ -238,6 +238,7 @@ def load_products(wb):
                 else:
                     if not is_empty_row(new_product):
                         new_product['is_fixed_price'] = False
+                new_product[header_val] = val
             elif header_val == 'Reagent fee':
                 if new_product['Components'] != '':
                     new_product['Components'].update(val)
